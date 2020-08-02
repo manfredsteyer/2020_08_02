@@ -55,7 +55,6 @@ main.js:950 Uncaught Error: Shared module is not available for eager consumption
 Ist das ein Bug und/oder mache ich hier was falsch?
 
 
-
 ## 2 Container + Singletons
 
 Derzeit scheint es, als ob Singletons Container-übergreifend gelten. 
@@ -102,3 +101,8 @@ Nachfolgend eine Beschreibung meines Experiments dazu.
 
 Wenn man überall ``singleton:true`` weglässt, nutzt der eine Container Version ``1.0.1`` und der andere Version ``2.0.1``.
 
+## Strict Version ohne Singleton
+
+Macht ``strictVersion:true`` ohne ``singleton:true`` Sinn? 
+
+Ich sehe derzeit keinen Effekt.
