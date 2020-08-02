@@ -58,6 +58,12 @@ Ist das ein Bug und/oder mache ich hier was falsch?
 
 ## 2 Container + Singletons
 
+Derzeit scheint es, als ob Singletons Container-übergreifend gelten. 
+
+Ist das so gewollt oder ein Bug?
+
+Nachfolgend eine Beschreibung meines Experiments dazu.
+
 ### Konfiguration
 
 - Shell
