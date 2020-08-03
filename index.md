@@ -205,3 +205,12 @@ Scheint aber nicht so zu sein...
 > Macht ``strictVersion:true`` ohne ``singleton:true`` Sinn? 
 
 > Ich sehe derzeit keinen Effekt.
+
+Liegt vermutlich daran, dass in dem Fall `strictVersion: true` der Standard ist.
+
+`strictVersion` macht dann einen Unterschied wenn keine passende Version gefunden wird. Also eigentlich nur wenn man selbst keine bereitstellt (`import: false`), oder selbst eine unpassende bereitstellt (unwahrscheinlich). Dann wird entweder ein Fehler geworfen (`strictVersion: true`) oder die höchste Version verwendet und eine Warning ausgegeben (`strictVersion: false`).
+
+Der Standard für `strictVersion` wird automatisch so gewählt, dass die Anwendung möglich keinen Fehler wirft, also es werden in-kompatible Versionen versucht zu verwenden.
+Es macht Sinn `strictVersion: true` zu setzen wenn man eine gute Fehlerbehandlung für Fehler in z. B. `import()` hat.
+
+
