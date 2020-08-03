@@ -1,0 +1,23 @@
+import * as useless_static from 'useless-lib';
+
+// console.debug('useless_static', useless_static.version);
+
+---
+
+      shared: { 
+        "rxjs": "rxjs", 
+        "useless-lib": {
+          eager: true
+        }
+      }
+
+---
+
+main.js:950 Uncaught Error: Shared module is not available for eager consumption: webpack/sharing/consume/default/useless-lib/useless-lib
+    at Object.__webpack_modules__.<computed> (main.js:950)
+    at __webpack_require__ (main.js:542)
+    at eval (main.ts:2)
+    at Module../src/main.ts (main.js:195)
+    at __webpack_require__ (main.js:542)
+    at main.js:1087
+    at main.js:1091
