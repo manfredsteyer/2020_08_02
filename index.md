@@ -122,9 +122,15 @@ In Node.js kann `eager` allerdings verwendet werden. Dort wird eh `remoteType: "
 
 ## 2 Container + Singletons
 
-> Derzeit scheint es, als ob Singletons Container-übergreifend gelten. 
+> Derzeit scheint es, als ob Singletons shareScope-übergreifend gelten. 
 
 > Ist das so gewollt oder ein Bug?
+
+Das ist nicht so gewollt.
+
+Allerdings muss man dazu auch erklären das shareScopes lokal pro Build existieren und **nicht** global sind.
+Für jedes `remote` kann man konfigurieren welche der lokalen shareScopes die `default` shareScope des remotes werden soll.
+Das heist `shareScope` nur ein `shared` zu konfigurieren macht selten Sinn.
 
 > Nachfolgend eine Beschreibung meines Experiments dazu.
 
@@ -133,24 +139,52 @@ In Node.js kann `eager` allerdings verwendet werden. Dort wird eh `remoteType: "
 > - Shell
 >   - useless-lib: ^1.0.0*
 >   - singleton: true
->   - container: default*
+>   - shareScope: default*
 
 > - Mfe1
 >   - useless-lib: ^1.0.1*
 >   - singleton: true
->   - container: default*
+>   - shareScope: default*
 
 > - Mfe2
 >   - useless-lib: ^2.0.0*
 >   - singleton: true
->   - container: other
+>   - shareScope: other
 
 > - Mfe3
 >   - useless-lib: ^2.0.1*
 >   - singleton: true
->   - container: other
+>   - shareScope: other
 
 > \* Nicht in ``webpack.config.json`` konfiguriert, sondern Standardwert bzw. Version in ``package.json`` hinterlegt.
+
+Ohne die `version` von `useless-lib` kann man schlecht was sagen. Diese wird in dieser Konfiguration ja automatisch aus der `package.json` ermittelt.
+Ich nehme einfach mal an, dass die `version` = `requiredVersion` ist ohne das `^`.
+
+Das führt also zu folgenden ShareScopes:
+
+```
+A (Shell.default, Mfe1.default, Mfe2.default, Mfe3.default)
+  - useless-lib 1.0.0 (from: Shell)
+  - useless-lib 1.0.1 (from: Mfe1)
+B (Mfe2.other)
+  - useless-lib 2.0.0 (from: Mfe2)
+C (Mfe3.other)
+  - useless-lib 2.0.1 (from: Mfe3)
+```
+
+Und das würde zu zu folgenden konsumierten Versionen führen:
+
+```
+Shell: useless-lib 1.0.1 from A (^1.0.0: ok)
+Mfe1: useless-lib 1.0.1 from A (^1.0.1: ok)
+Mfe2: useless-lib 2.0.0 from B (^2.0.0: ok)
+Mfe3: useless-lib 2.0.1 from C (^2.0.1: ok)
+```
+
+Scheint aber nicht so zu sein...
+
+=> Da ist ein Bug in `SharePlugin` und es gibt den `shareScope` nicht weiter an `ConsumeSharedPlugin` und `ProvideSharedPlugin`.
 
 ### Ergebnis
 
@@ -160,7 +194,7 @@ In Node.js kann `eager` allerdings verwendet werden. Dort wird eh `remoteType: "
 ### Fragen
 
 > - Ist das so gewollt?
-> - Sollten Singletons pro Container gelten oder wirklich über alle Container hinweg?
+> - Sollten Singletons pro shareScope gelten oder wirklich über alle shareScopes hinweg?
 
 ### Variation
 
