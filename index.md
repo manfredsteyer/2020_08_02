@@ -58,6 +58,11 @@ Für relative `request`s also Shared Modul kann es auch Sinn machen eine `versio
 
 > Sehe ich das richtig: Wenn ich in einer Anwendung einen Singleton definiere, sollte diese shared Library auch in allen Anderen Anwendungen ein Singleton sein.
 
+Ja. `singleton` beeinflusst nur die Consuming Seite. In den aller meisten Fällen muss `singleton: true` überall angegeben werden.
+
+Man könnte auf die Idee kommen das webpack doch automatisch ein Modul überall als Singleton konsumieren könnte wenn dies in einer Anwendung angegeben ist.
+Allerdings ist ein Ziel von Module Federation, dass jeder Build/Anwendung möglichst isoliert ist und möglichst wenig von anderen Builds beeinflusst wird.
+Ein falsches `singleton: true` würde so alle anderen Anwendungen zerstören, während mit der aktuellen Funktionsweise nur die Anwendung mit dem falschen `singleton: true` zerstört wird.
 
 ## Eager und statische Imports
 
