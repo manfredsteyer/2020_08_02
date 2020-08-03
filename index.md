@@ -31,8 +31,28 @@ Zusammengefasst `version` und `requiredVersion` machen sehr verschiedene Dinge. 
 
 > Wann würde man ``requiredVersion`` nutzen?
 
+Für `npm` packages, am besten nie. Sie wird ja automatisch aus der `package.json` ermittelt.
+
+Für packages in monorepos auch nicht. Da stehen die benötigten Versionen ja auch in der `package.json`.
+
+Es kann relevant werden wenn `resolve.modules` in webpack verwendet wird und so andere (virtuelle?) "packages" verwendet werden.
+Hier stehene der Versionen nicht in der `package.json` und man muss sie angeben mit `requiredVersion`.
+
+Webpack wirft eine Fehlermeldung wenn die `requiredVersion` nicht automatisch ermittelt werden kann, dann muss sie angegeben werden.
+
+Es gibt auserdem noch einen Sonderfall in dem `requiredVersion` angegeben werden muss:
+Man kann auch relative `request`s als Shared Module verwenden: `shared: { "./src/module": { shareKey: "special-module", requiredVersion: "^1.2" }`.
+Dann kann keine `package.json` verwendet werden.
+
 > Wann würde man ``version`` nutzen?
 
+Vergleichbar wie `requiredVersion`.
+
+Nicht verwenden wenn sie in der `package.json` steht.
+
+Wenn webpack eine Fehlermeldung wirft, dass `version` nicht automatisch ermittelt werden kann, dann muss man sie angeben.
+
+Für relative `request`s also Shared Modul kann es auch Sinn machen eine `version` anzugeben. Automatisch wird die `version` von der Applikation hier sonst verwendet.
 
 ## Singleton
 
