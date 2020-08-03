@@ -104,6 +104,21 @@ Ein falsches `singleton: true` würde so alle anderen Anwendungen zerstören, w�
 
 > Ist das ein Bug und/oder mache ich hier was falsch?
 
+Es sind vielleicht falsche Erwartungen an `eager: true`.
+
+Normalerweise werden Shared Modules asynchron konsumiert. Das heist Shared Module werden asynchron vom Container geladen und auch der Container kann asynchron geladen werden.
+Das macht Sinn, da asynchrones Laden es ermöglicht die Module in separate Dateien auszulagern die dann nur bei Bedarf geladen werden.
+
+Mit Eager Shared Modules werden sie synchron konsumiert. Das heist Shared Module werden synchron vom Container geladen und auch der Container muss synchron geladen werden.
+Shared Module müssen also schon vorab geladen werden und nicht erst bei Bedarf. Im Web macht das aufgrund des zusätzlichen unnötigen Downloads natürlich keinen Sinn.
+
+Auch wenn es kaum Sinn macht, so kann es verwendet werden:
+
+* Das Shared Module muss in allen Builds mit `eager: true` markiert sein (Ähnlich wie `singleton: true`).
+* Container müssen synchron geladen werden. z. B. mit `remoteType: "var"` anstatt `remoteType: "script"` (Standard)
+  Bei `remoteType: "var"` mussen die Script-Tags alle remotes bereits vor der Applikation geladen sein.
+
+In Node.js kann `eager` allerdings verwendet werden. Dort wird eh `remoteType: "commonjs-module"` verwendet, das ist synchron und auch schadet es kaum zuviel Code zu laden.
 
 ## 2 Container + Singletons
 
