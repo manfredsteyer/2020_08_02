@@ -2,107 +2,132 @@
 
 ## requiredVersion vs. version
 
-Ich habe das Gefühl, dass es in sehr vielen Szenarien egal ist, ob man ``requiredVersion`` oder ``version`` verwendet. Warum hat man sich entschieden, hier zwei Properties einzuführen? 
+> Ich habe das Gefühl, dass es in sehr vielen Szenarien egal ist, ob man ``requiredVersion`` oder ``version`` verwendet. Warum hat man sich entschieden, hier zwei Properties einzuführen? 
 
-Wann würde man ``requiredVersion`` nutzen?
+Dazu hilft es vielleicht erst zu erklären wie Shared Modules intern funktioniert. Sie bestehen nämlich aus zwei Aspekten.
 
-Wann würde man ``version`` nutzen?
+Wenn `shared` im `ModuleFederationPlugin` verwendet wird passiert das Folgende: Das `ModuleFederationPlugin` ist nur eine Fasade und leitet `shared` direkt an das `SharePlugin` weiter. Das `SharePlugin` verwendet dann selbst wieder das `ConsumeSharedPlugin` und das `ProvideSharedPlugin`. Dabei geht `version` and das `ProvideSharedPlugin` und `requiredVersion` an.
+
+Das führt uns zu den zwei Aspekten von Shared Modules: Consuming and Providing.
+
+Nehmen wir folgendes Beispiel: `shared: { "some-lib": { import: "some-lib-import" } }`, das ist zwar eher ungewönlich aber hilft zum Erkären.
+(Üblich wäre zum Beispiel `shared: ["a-package"]` das entspricht `shared: { "a-package": { import: "a-package" } }`)
+
+Auf der Consuming Seite passiert das Folgende: Immer wenn ein `Module` für eine `Dependency` (eine `Dependency` is zum Beispiel: `import "some-lib"` oder `require("some-lib")`) ermittelt werden soll, wird vorher geprüft ob es nicht ein `ConsumeSharedModule` werden soll. Das passiert wenn der `request` (hier: `some-lib`) dem Wert aus der `shared` Konfiguration entspricht. Falls `requiredVersion` nicht gesetzt ist, wird sie nun auch ermittelt. Dazu wird die die nächste `package.json` ausgehend von **dem Modul in dem die `Dependency` steht** nommen und der `request` in `dependencies`, `peerDependencies`, etc. gesucht. Das heist `import "some-lib"` führt nicht immer zu dem gleichen `ConsumeSharedModule`, sondern es können mehrere existieren abhängig von der ermittelten `requiredVersion`.
+
+Auserdem hat ein `ConsumeSharedModule` auch ein `fallback` Module. Das wird durch den Wert der `import` Option erstellt. Hier würde also ein normales Modul für `some-lilb-import` erstellt.
+
+Auf der Providing Seite passiert Ähnliches: Immer wenn ein `Module` für eine `Dependency` erstellt wurde, bei der `request` dem Wert der `import` Option entspricht, wird zusätzlich auch ein `ProvideSharedModule` erstellt, welches allerdings global für alle Entrypoints automatisch geladen wird. Diese `ProvideSharedModule` registriert das erstellte `Module` als `SharedModule`. Dabei wird `version` verwendet um das `Module` zu registrieren. Wurde keine `version` angegeben wird die `version` aus der `package.json` **des erstellen `Module`s** verwendet (Hinweis: Das ist nicht die gleiche `package.json` wie auf der Consuming Seite).
+
+Zur Laufzeit werden also zunächst alle Shared Module von allen Builds via `ProvideSharedModule` registriert und dann, wenn die entsprechnenden Shared Module benutzt werden, wieder via `ConsumeSharedModule` geladen. Beim Laden der Module wird `requiredVersion` mit der `version` von allen registrieren Modulen verglichen. Dabei passiert in Abhängigkeit von verscheidenen anderen Optionen (`singleton`, `strictVersion`) eins von den Folgenden:
+
+* Die höchste `version`, die noch mit `requiredVersion` kompatible ist wird benutzt. Gibt es keine wird das `fallback` Modul verwendet. (Standard)
+* Die höchste `version`, die noch mit `requiredVersion` kompatible ist wird benutzt. Gibt es keine wird höchste `version` verwendet und eine Warning ausgegeben. (`strictVersion: false`)
+* Eine bereits geladene oder die höchste `version` wird benutzt. Wenn sie nicht mit `requiredVersion` kompatible ist wird eine Warning ausgegeben. (`singleton: true`)
+* Wenn die bereits geladene bzw. die höchste `version` mit `requiredVersion` kompatible ist wird sie benutzt. Sonst führt das Laden zu einem Fehler. (`singleton: true, strictVersion: true`)
+* Es gibt noch mehr Fällen für `import: false`, `requiredVersion: false` oder `version: false`, aber die sind weniger relevant.
+
+Zusammengefasst `version` und `requiredVersion` machen sehr verschiedene Dinge. Beide verwenden sogar verscheidene Syntax. `version` erwartet eine Versionsnummer, z. B. `1.2.3`. `requiredVersion` erwartet eine Version Range, z. B. `^1.2.3`, `1.2.x - 3.4` oder `^1.2.3 || >=2.1.4 <3`
+
+> Wann würde man ``requiredVersion`` nutzen?
+
+> Wann würde man ``version`` nutzen?
 
 
 ## Singleton
 
-Sehe ich das richtig: Wenn ich in einer Anwendung einen Singleton definiere, sollte diese shared Library auch in allen Anderen Anwendungen ein Singleton sein.
+> Sehe ich das richtig: Wenn ich in einer Anwendung einen Singleton definiere, sollte diese shared Library auch in allen Anderen Anwendungen ein Singleton sein.
 
 
 ## Eager und statische Imports
 
 ### Konfiguration
 
-Shell nutzt folgende Konfiguration:
+> Shell nutzt folgende Konfiguration:
 
-```
-shared: { 
-    "rxjs": "rxjs", 
-    "useless-lib": {
-        eager: true
-    }
-}
-```
+> ```
+> shared: { 
+>     "rxjs": "rxjs", 
+>     "useless-lib": {
+>         eager: true
+>     }
+> }
+> ```
 
-Shell importiert useless-lib über einen statischen Import:
+> Shell importiert useless-lib über einen statischen Import:
 
-```
-import * as useless_static from 'useless-lib';
-
-console.debug('useless_static', useless_static.version);
-```
+> ```
+> import * as useless_static from 'useless-lib';
+> 
+> console.debug('useless_static', useless_static.version);
+> ```
 
 ### Ergebnis
 
-```
-main.js:950 Uncaught Error: Shared module is not available for eager consumption: webpack/sharing/consume/default/useless-lib/useless-lib
-    at Object.__webpack_modules__.<computed> (main.js:950)
-    at __webpack_require__ (main.js:542)
-    at eval (main.ts:2)
-    at Module../src/main.ts (main.js:195)
-    at __webpack_require__ (main.js:542)
-    at main.js:1087
-    at main.js:1091
-```
+> ```
+> main.js:950 Uncaught Error: Shared module is not available for eager consumption: webpack/sharing/consume/default/useless-lib/useless-lib
+>     at Object.__webpack_modules__.<computed> (main.js:950)
+>     at __webpack_require__ (main.js:542)
+>     at eval (main.ts:2)
+>     at Module../src/main.ts (main.js:195)
+>     at __webpack_require__ (main.js:542)
+>     at main.js:1087
+>     at main.js:1091
+> ```
 
 ### Fragen
 
-Ist das ein Bug und/oder mache ich hier was falsch?
+> Ist das ein Bug und/oder mache ich hier was falsch?
 
 
 ## 2 Container + Singletons
 
-Derzeit scheint es, als ob Singletons Container-übergreifend gelten. 
+> Derzeit scheint es, als ob Singletons Container-übergreifend gelten. 
 
-Ist das so gewollt oder ein Bug?
+> Ist das so gewollt oder ein Bug?
 
-Nachfolgend eine Beschreibung meines Experiments dazu.
+> Nachfolgend eine Beschreibung meines Experiments dazu.
 
 ### Konfiguration
 
-- Shell
-  - useless-lib: ^1.0.0*
-  - singleton: true
-  - container: default*
+> - Shell
+>   - useless-lib: ^1.0.0*
+>   - singleton: true
+>   - container: default*
 
-- Mfe1
-  - useless-lib: ^1.0.1*
-  - singleton: true
-  - container: default*
+> - Mfe1
+>   - useless-lib: ^1.0.1*
+>   - singleton: true
+>   - container: default*
 
-- Mfe2
-  - useless-lib: ^2.0.0*
-  - singleton: true
-  - container: other
+> - Mfe2
+>   - useless-lib: ^2.0.0*
+>   - singleton: true
+>   - container: other
 
-- Mfe3
-  - useless-lib: ^2.0.1*
-  - singleton: true
-  - container: other
+> - Mfe3
+>   - useless-lib: ^2.0.1*
+>   - singleton: true
+>   - container: other
 
-\* Nicht in ``webpack.config.json`` konfiguriert, sondern Standardwert bzw. Version in ``package.json`` hinterlegt.
+> \* Nicht in ``webpack.config.json`` konfiguriert, sondern Standardwert bzw. Version in ``package.json`` hinterlegt.
 
 ### Ergebnis
 
-- Alle nutzen Version 2.0.1
-- Es kommt für Shell und mfe1 eine Singleton-Warnung
+> - Alle nutzen Version 2.0.1
+> - Es kommt für Shell und mfe1 eine Singleton-Warnung
 
 ### Fragen
 
-- Ist das so gewollt?
-- Sollten Singletons pro Container gelten oder wirklich über alle Container hinweg?
+> - Ist das so gewollt?
+> - Sollten Singletons pro Container gelten oder wirklich über alle Container hinweg?
 
 ### Variation
 
-Wenn man überall ``singleton:true`` weglässt, nutzt der eine Container Version ``1.0.1`` und der andere Version ``2.0.1``.
+> Wenn man überall ``singleton:true`` weglässt, nutzt der eine Container Version ``1.0.1`` und der andere Version ``2.0.1``.
 
 ## Strict Version ohne Singleton
 
-Macht ``strictVersion:true`` ohne ``singleton:true`` Sinn? 
+> Macht ``strictVersion:true`` ohne ``singleton:true`` Sinn? 
 
-Ich sehe derzeit keinen Effekt.
+> Ich sehe derzeit keinen Effekt.
